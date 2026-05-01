@@ -47,7 +47,7 @@ User input → resolveVoterState() → ActionCard
   ┌─────────────────────────────────────────────────┐
   │                   Frontend                       │
   │         React + TypeScript + Vite               │
-  │   Onboarding (3 steps) → StateCard (8 themes)  │
+  │      Deployed on Cloud Run / Hosting            │
   └──────────────────┬──────────────────────────────┘
                      │ POST /resolveState
   ┌──────────────────▼──────────────────────────────┐
@@ -71,8 +71,9 @@ User input → resolveVoterState() → ActionCard
 | **Gemini 2.5 Flash** | Narrates ActionCard in user's language | AI integration — dual support for Vertex AI and AI Studio API Keys |
 | **Cloud Firestore** | Persists sessions + translation cache | High-performance state management |
 | **Cloud Functions v2** | Hosts resolveState + translate APIs | Modern, event-driven serverless backend |
+| **Cloud Run** | Hosts the React frontend container | High-availability, scalable container hosting |
 | **Cloud Translation API** | Translates UI to 6 Indian languages | Accessibility & inclusive reach |
-| **Firebase Hosting** | Serves the React frontend via CDN | Global performance & deployment |
+| **Firebase Hosting** | Serves static assets via CDN | Global performance & deployment |
 | **BigQuery** | Queries ECI 2024 election statistics | Data-driven civic intelligence |
 
 ## Project structure
@@ -80,15 +81,37 @@ User input → resolveVoterState() → ActionCard
 ```text
 /promptwars-vote-disha
   ├── frontend/          # React + Vite Application
-  │   ├── src/           # Component & State logic
-  │   └── tsconfig.json  # Strict TS config
+  │   ├── Dockerfile     # Nginx-based container for Cloud Run
+  │   └── src/           # Component & State logic
   ├── functions/         # Firebase Cloud Functions (Node.js 20)
   │   ├── src/           # resolveState & translate handlers
   │   └── tsconfig.json  # Path aliases to @shared
   ├── shared/            # Common Logic & Types
-  │   ├── __tests__/     # Jest test suite (100% logic coverage)
   │   └── stateResolver  # Deterministic action engine
+  ├── .agents/           # Assistant skills & project context
+  ├── cloudbuild.yaml    # CI/CD for Cloud Run frontend
   └── firebase.json      # Infrastructure configuration
+```
+
+## Deployment
+
+### Backend (Firebase Functions)
+```bash
+npx firebase deploy --only functions
+```
+
+### Frontend (Cloud Run)
+The frontend is containerized using Nginx and deployed via Google Cloud Build:
+```bash
+# Build and Push
+gcloud builds submit . --config cloudbuild.yaml
+
+# Deploy
+gcloud run deploy votedisha-frontend \
+  --image gcr.io/votedisha/votedisha-frontend \
+  --region asia-south1 \
+  --platform managed \
+  --allow-unauthenticated
 ```
 
 ## Running locally
@@ -104,16 +127,14 @@ User input → resolveVoterState() → ActionCard
    `npm run install:all`
 
 2. **Set environment variables**
-    Add `.env` to `functions/` with: `GEMINI_API_KEY`, `GEMINI_MODEL`, `VERTEX_PROJECT_ID`, `VERTEX_LOCATION`, `FRONTEND_ORIGIN`
+    - `functions/.env`: `GEMINI_API_KEY`, `GEMINI_MODEL`, `FRONTEND_ORIGIN`
+    - `frontend/.env.local`: `VITE_API_BASE_URL`
 
 3. **Start Firebase emulator**
    `firebase emulators:start --only functions,firestore`
 
 4. **Start frontend**
    `cd frontend && npm run dev`
-
-5. **Test the API**
-   `curl -X POST http://127.0.0.1:5001/votedisha/asia-south1/resolveState -H "Content-Type: application/json" -d '{"state":"Maharashtra","age":25,"isRegistered":false,"preferredLanguage":"hi"}'`
 
 ## Testing
 
@@ -129,11 +150,7 @@ Run logic tests: `npm run test` (from root)
 ## Security
 
 - **Fact Fence**: LLM system prompt strictly forbids inventing dates or rules.
-- **Input Validation**: All Cloud Function endpoints enforce strict type and range checks.
-- **Firestore Rules**: Sessions are write-only from server; cache is read-only for clients.
-- **PII Protection**: Age and registration status are processed but never persisted.
-- **CORS Enforcement**: Backend locked to authorized `FRONTEND_ORIGIN`.
-- **Identity**: Supports both API Keys (`GEMINI_API_KEY`) and Vertex AI Application Default Credentials.
+- **CORS Enforcement**: Backend locked to authorized `FRONTEND_ORIGIN` (supports `.run.app`, `.web.app`).
 - **Dynamic Config**: Gemini model name can be updated without redeployment via Firestore (`configs/global/GEMINI_MODEL`).
 
 ## Accessibility
@@ -148,7 +165,6 @@ Run logic tests: `npm run test` (from root)
 ## Assumptions
 
 - Dates are estimates for 2026-2029 cycles and require ECI confirmation.
-- "I'm not sure" status is treated as unregistered for maximum guidance.
 - BigQuery stats are based on 2024 Lok Sabha turnout data.
 - Rate limiting is currently header-only (client-side simulation).
 - Translation quality depends on Google Cloud Translation API models.
