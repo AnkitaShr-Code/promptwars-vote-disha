@@ -1,31 +1,20 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { GoogleGenAI } from '@google/genai'
+import { GoogleGenAI } from '@google/genai';
 import { v4 as uuidv4 } from 'uuid';
 import { checkRateLimit } from './rateLimitService';
 import { UserContext, ActionCard, ApiResponse, ApiError } from '../../shared/types';
 import { resolveVoterState } from '../../shared/stateResolver';
-import { SUPPORTED_LANGUAGES } from '../../shared/constants';
+import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, SupportedLanguage } from '../../shared/constants';
 import { ELECTION_DB } from '../../shared/electionDb';
 import { TranslationServiceClient } from '@google-cloud/translate';
 import { translateCard } from './translateService';
 import { ECI_KNOWLEDGE } from './knowledge';
 import { ConfigService } from './configService';
+import { ensureAdminInitialized, applyCors, validateMethod, getClientIp, validateContentType } from './utils';
 
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English',
-  hi: 'Hindi',
-  mr: 'Marathi',
-  ta: 'Tamil',
-  te: 'Telugu',
-  bn: 'Bengali',
-};
-
-if (getApps().length === 0) {
-  initializeApp();
-}
+ensureAdminInitialized();
 
 const PROJECT_ID = process.env.VERTEX_PROJECT_ID ?? '';
 const LOCATION = process.env.VERTEX_LOCATION ?? 'asia-south1';
@@ -79,7 +68,7 @@ async function generateExplanation(
   _location: string,
 ): Promise<string> {
   try {
-    const languageName = LANGUAGE_NAMES[language] ?? 'English';
+    const languageName = LANGUAGE_NAMES[language as SupportedLanguage] ?? 'English';
     
     const apiKey = process.env.GEMINI_API_KEY;
     // Use Vertex AI (Enterprise) if no API key is present, otherwise use AI Studio (API Key)
@@ -157,43 +146,9 @@ export const resolveState = onRequest(
     secrets: ['GEMINI_MODEL']
   },
   async (request, response) => {
-    // A. CORS headers
-    const origin = request.headers.origin || '';
-    const isLocalhost = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
-    const isProduction = 
-      origin === FRONTEND_ORIGIN || 
-      origin.endsWith('.web.app') || 
-      origin.endsWith('.firebaseapp.com') ||
-      origin.endsWith('.run.app');
-
-    const allowedOrigin = (isLocalhost || isProduction) ? origin : FRONTEND_ORIGIN;
-    
-    response.set('Access-Control-Allow-Origin', allowedOrigin);
-    response.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    response.set('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (request.method === 'OPTIONS') {
-      response.status(204).send('');
-      return;
-    }
-
-    // B. Method check
-    if (request.method !== 'POST') {
-      const error: ApiError = { error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' };
-      response.status(400).json(error);
-      return;
-    }
-
-    // C. Content-Type check
-    const contentType = request.get('Content-Type') || '';
-    if (!contentType.includes('application/json')) {
-      const error: ApiError = {
-        error: 'Content-Type must be application/json',
-        code: 'INVALID_CONTENT_TYPE',
-      };
-      response.status(415).json(error);
-      return;
-    }
+    if (applyCors(request, response)) return;
+    if (!validateMethod(request, response)) return;
+    if (!validateContentType(request, response)) return;
 
     // D. Validate input
     const validation = validateInput(request.body);
@@ -207,7 +162,7 @@ export const resolveState = onRequest(
     try {
       const today = new Date();
 
-      const ip = request.ip || 'unknown';
+      const ip = getClientIp(request);
       const isAllowed = await checkRateLimit(ip);
 
       if (!isAllowed) {

@@ -21,6 +21,18 @@ export const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 };
 
 /**
+ * English names of supported languages for AI prompts.
+ */
+export const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
+  en: 'English',
+  hi: 'Hindi',
+  mr: 'Marathi',
+  ta: 'Tamil',
+  te: 'Telugu',
+  bn: 'Bengali',
+};
+
+/**
  * Minimum legal age to cast a vote in India.
  */
 export const MIN_VOTER_AGE = 18;

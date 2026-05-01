@@ -31,3 +31,4 @@ Thumbs.db
 
 # Build outputs
 functions/lib
+coverage/

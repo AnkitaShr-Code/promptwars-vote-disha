@@ -5,39 +5,19 @@ import { TranslationServiceClient } from '@google-cloud/translate';
 import { SUPPORTED_LANGUAGES } from '../../shared/constants';
 import { translateCard } from './translateService';
 import { checkRateLimit } from './rateLimitService';
-import { ActionCard } from '../../shared/types';
+import { ensureAdminInitialized, applyCors, validateMethod, getClientIp, validateContentType } from './utils';
 
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173';
+ensureAdminInitialized();
 
 export const translate = onRequest(
   { cors: false, region: 'asia-south1' },
   async (request, response) => {
-    const origin = request.headers.origin || '';
-    const isLocalhost = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
-    const isProduction = 
-      origin === FRONTEND_ORIGIN || 
-      origin.endsWith('.web.app') || 
-      origin.endsWith('.firebaseapp.com') ||
-      origin.endsWith('.run.app');
-
-    const allowedOrigin = (isLocalhost || isProduction) ? origin : FRONTEND_ORIGIN;
-
-    response.set('Access-Control-Allow-Origin', allowedOrigin);
-    response.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    response.set('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (request.method === 'OPTIONS') {
-      response.status(204).send('');
-      return;
-    }
+    if (applyCors(request, response)) return;
+    if (!validateMethod(request, response)) return;
+    if (!validateContentType(request, response)) return;
 
     try {
-      if (request.method !== 'POST') {
-        response.status(400).json({ error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' });
-        return;
-      }
-
-      const ip = request.ip || 'unknown';
+      const ip = getClientIp(request);
       const isAllowed = await checkRateLimit(ip);
 
       if (!isAllowed) {
@@ -49,12 +29,23 @@ export const translate = onRequest(
       }
 
       const { actionCard, targetLanguage } = request.body;
+      
+      // Basic validation for actionCard structure
       if (
-        !actionCard ||
+        !actionCard || 
+        typeof actionCard !== 'object' ||
+        !actionCard.voterState ||
+        !Array.isArray(actionCard.checklist)
+      ) {
+        response.status(400).json({ error: 'Invalid or missing actionCard', code: 'INVALID_ACTION_CARD' });
+        return;
+      }
+
+      if (
         !targetLanguage ||
         !SUPPORTED_LANGUAGES.includes(targetLanguage)
       ) {
-        response.status(400).json({ error: 'Invalid input parameters', code: 'INVALID_INPUT' });
+        response.status(400).json({ error: 'Unsupported or missing target language', code: 'INVALID_LANGUAGE' });
         return;
       }
 
