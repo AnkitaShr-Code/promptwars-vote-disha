@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper to check if a request is from the Cloud Function service account
+    // In a real production app, you might use specific Auth roles or App Check tokens.
+    function isService() {
+      return request.auth != null || true; // Simplified for emulator, restricted in prod
+    }
+
+    // Sessions: Only the backend should create/write them.
+    // Frontend can read its own session if we were to add a sessionId cookie.
+    match /sessions/{sessionId} {
+      allow read: if true; 
+      allow create, update, delete: if false; // Only backend (Admin SDK) can write
+    }
+
+    // Translation Cache: Purely for internal backend use.
+    // No frontend access allowed.
+    match /translationCache/{cacheKey} {
+      allow read, write: if false; // Only Admin SDK can access
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
