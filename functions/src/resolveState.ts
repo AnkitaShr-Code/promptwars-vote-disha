@@ -160,7 +160,11 @@ export const resolveState = onRequest(
     // A. CORS headers
     const origin = request.headers.origin || '';
     const isLocalhost = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
-    const isProduction = origin === FRONTEND_ORIGIN || origin.endsWith('.web.app') || origin.endsWith('.firebaseapp.com');
+    const isProduction = 
+      origin === FRONTEND_ORIGIN || 
+      origin.endsWith('.web.app') || 
+      origin.endsWith('.firebaseapp.com') ||
+      origin.endsWith('.run.app');
 
     const allowedOrigin = (isLocalhost || isProduction) ? origin : FRONTEND_ORIGIN;
     

@@ -12,7 +12,17 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173';
 export const translate = onRequest(
   { cors: false, region: 'asia-south1' },
   async (request, response) => {
-    response.set('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
+    const origin = request.headers.origin || '';
+    const isLocalhost = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
+    const isProduction = 
+      origin === FRONTEND_ORIGIN || 
+      origin.endsWith('.web.app') || 
+      origin.endsWith('.firebaseapp.com') ||
+      origin.endsWith('.run.app');
+
+    const allowedOrigin = (isLocalhost || isProduction) ? origin : FRONTEND_ORIGIN;
+
+    response.set('Access-Control-Allow-Origin', allowedOrigin);
     response.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
     response.set('Access-Control-Allow-Headers', 'Content-Type');
 
