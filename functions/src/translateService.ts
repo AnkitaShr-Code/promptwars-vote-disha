@@ -1,4 +1,5 @@
 import * as logger from 'firebase-functions/logger';
+import { Firestore } from 'firebase-admin/firestore';
 import { TranslationServiceClient } from '@google-cloud/translate';
 import { ActionCard } from '../../shared/types';
 import { createHash } from 'crypto';
@@ -43,7 +44,7 @@ async function translateText(
 
 async function getCachedTranslation(
   cacheKey: string,
-  db: FirebaseFirestore.Firestore,
+  db: Firestore,
 ): Promise<string | null> {
   try {
     const doc = await db.collection('translationCache').doc(cacheKey).get();
@@ -59,7 +60,7 @@ async function getCachedTranslation(
 async function setCachedTranslation(
   cacheKey: string,
   text: string,
-  db: FirebaseFirestore.Firestore,
+  db: Firestore,
 ): Promise<void> {
   try {
     await db.collection('translationCache').doc(cacheKey).set({
@@ -75,7 +76,7 @@ async function translateWithCache(
   text: string,
   targetLanguage: string,
   client: TranslationServiceClient,
-  db: FirebaseFirestore.Firestore,
+  db: Firestore,
 ): Promise<string> {
   if (targetLanguage === 'en') {
     return text.replace(/^(\[[A-Z]{2}\]\s*)+/, '');
@@ -98,7 +99,7 @@ export async function translateCard(
   actionCard: ActionCard,
   targetLanguage: string,
   client: TranslationServiceClient,
-  db: FirebaseFirestore.Firestore,
+  db: Firestore,
 ): Promise<ActionCard> {
   // Translate headline and subtext in parallel (just 2 calls)
   const [headline, subtext] = await Promise.all([
