@@ -10,7 +10,7 @@
     "install:all": "npm install && npm install --prefix frontend && npm install --prefix functions",
     "build:all": "npm run build --prefix functions && npm run build --prefix frontend",
     "lint:all": "npm run lint --prefix functions && npm run lint --prefix frontend",
-    "test": "jest --testPathPatterns=shared/__tests__"
+    "test": "jest"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
