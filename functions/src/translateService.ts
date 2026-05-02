@@ -80,21 +80,30 @@ export async function translateWithCache(
   client: TranslationServiceClient,
   db: Firestore,
 ): Promise<string> {
-  if (targetLanguage === 'en') {
+  try {
+    if (targetLanguage === 'en') {
+      return text.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
+    }
+
+    const cleanText = text.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
+    const cacheKey = exports.hashString(`${cleanText}:${targetLanguage}`);
+    const cached = await exports.getCachedTranslation(cacheKey, db);
+    if (cached) {
+      return cached.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
+    }
+
+    const translated = await exports.translateText(text, targetLanguage, text, client);
+    exports.setCachedTranslation(cacheKey, translated, db).catch(() => { });
+
+    return translated;
+  } catch (err: unknown) {
+    logger.error('translateWithCache failed', {
+      targetLanguage,
+      err: err instanceof Error ? err.message : String(err)
+    });
+    // Return clean original text as fallback
     return text.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
   }
-
-  const cleanText = text.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
-  const cacheKey = hashString(`${cleanText}:${targetLanguage}`);
-  const cached = await getCachedTranslation(cacheKey, db);
-  if (cached) {
-    return cached.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
-  }
-
-  const translated = await translateText(text, targetLanguage, text, client);
-  setCachedTranslation(cacheKey, translated, db).catch(() => { });
-
-  return translated;
 }
 
 export async function translateCard(
@@ -103,23 +112,34 @@ export async function translateCard(
   client: TranslationServiceClient,
   db: Firestore,
 ): Promise<ActionCard> {
-  // Translate headline and subtext in parallel (just 2 calls)
-  const [headline, subtext] = await Promise.all([
-    translateWithCache(actionCard.headline, targetLanguage, client, db),
-    translateWithCache(actionCard.subtext, targetLanguage, client, db),
-  ]);
+  try {
 
-  // Translate checklist items sequentially to avoid rate limiting
-  const checklist: string[] = [];
-  for (const item of actionCard.checklist) {
-    const translated = await translateWithCache(item, targetLanguage, client, db);
-    checklist.push(translated);
+    // Translate headline and subtext in parallel (just 2 calls)
+    const [headline, subtext] = await Promise.all([
+      exports.translateWithCache(actionCard.headline, targetLanguage, client, db),
+      exports.translateWithCache(actionCard.subtext, targetLanguage, client, db),
+    ]);
+
+    // Translate checklist items sequentially to avoid rate limiting
+    const checklist: string[] = [];
+    for (const item of actionCard.checklist) {
+      const translated = await exports.translateWithCache(item, targetLanguage, client, db);
+      checklist.push(translated);
+    }
+
+    return {
+      ...actionCard,
+      headline,
+      subtext,
+      checklist,
+    };
+  } catch (err: unknown) {
+    logger.error('translateCard failed', {
+      voterState: actionCard.voterState,
+      targetLanguage,
+      err: err instanceof Error ? err.message : String(err)
+    });
+    // Return original English card as fallback — never crash
+    return actionCard;
   }
-
-  return {
-    ...actionCard,
-    headline,
-    subtext,
-    checklist,
-  };
 }

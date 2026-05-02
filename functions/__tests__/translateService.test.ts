@@ -56,6 +56,12 @@ describe('translateService coverage', () => {
       expect(result).toBe('Original');
     });
 
+    test('handles non-Error objects in catch', async () => {
+      mockTranslateClient.translateText.mockRejectedValueOnce('string error');
+      const result = await translateText('Hello', 'hi', 'Original', mockTranslateClient);
+      expect(result).toBe('Original');
+    });
+
     test('handles empty translation result', async () => {
       mockTranslateClient.translateText.mockResolvedValueOnce([{ translations: [] }]);
       const result = await translateText('Hello', 'hi', 'Original', mockTranslateClient);
@@ -84,11 +90,23 @@ describe('translateService coverage', () => {
       const result = await getCachedTranslation('key', mockDb);
       expect(result).toBeNull();
     });
+
+    test('handles non-Error objects in Firestore catch', async () => {
+      mockDb.get.mockRejectedValueOnce('DB Fail');
+      const result = await getCachedTranslation('key', mockDb);
+      expect(result).toBeNull();
+    });
   });
 
   describe('setCachedTranslation', () => {
     test('logs error on Firestore failure', async () => {
       mockDb.set.mockRejectedValueOnce(new Error('DB Fail'));
+      await setCachedTranslation('key', 'text', mockDb);
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    test('handles non-Error objects in set catch', async () => {
+      mockDb.set.mockRejectedValueOnce('DB Fail');
       await setCachedTranslation('key', 'text', mockDb);
       expect(logger.error).toHaveBeenCalled();
     });
@@ -117,6 +135,68 @@ describe('translateService coverage', () => {
       expect(result.headline).toBe('TRANSLATED_TEXT');
       expect(result.subtext).toBe('TRANSLATED_TEXT');
       expect(result.checklist[0]).toBe('TRANSLATED_TEXT');
+    });
+  });
+
+  describe('translateWithCache error handling', () => {
+    it('returns clean original text when an unexpected error occurs', async () => {
+      const translateModule = require('../src/translateService');
+      const spy = jest.spyOn(translateModule, 'getCachedTranslation').mockRejectedValueOnce(new Error('Unexpected DB failure'));
+      
+      const result = await translateModule.translateWithCache('Hello world', 'hi', mockTranslateClient, mockDb);
+      expect(result).toBe('Hello world');
+      spy.mockRestore();
+    });
+
+    it('returns prefix-stripped text when error occurs with prefixed input', async () => {
+      const translateModule = require('../src/translateService');
+      const spy = jest.spyOn(translateModule, 'getCachedTranslation').mockRejectedValueOnce(new Error('failure'));
+      
+      const result = await translateModule.translateWithCache('[HI] Hello world', 'mr', mockTranslateClient, mockDb);
+      expect(result).toBe('Hello world');
+      spy.mockRestore();
+    });
+
+    it('handles non-Error objects in catch block', async () => {
+      const translateModule = require('../src/translateService');
+      const spy = jest.spyOn(translateModule, 'getCachedTranslation').mockRejectedValueOnce('String Error');
+      
+      const result = await translateModule.translateWithCache('Hello', 'hi', mockTranslateClient, mockDb);
+      expect(result).toBe('Hello');
+      spy.mockRestore();
+    });
+  });
+
+  describe('translateCard error handling', () => {
+    it('returns original actionCard when translation pipeline fails', async () => {
+      const translateModule = require('../src/translateService');
+      const spy = jest.spyOn(translateModule, 'translateWithCache').mockRejectedValueOnce(new Error('Total failure'));
+
+      const originalCard: ActionCard = { ...mockActionCard };
+      const result = await translateModule.translateCard(originalCard, 'hi', mockTranslateClient, mockDb);
+      
+      expect(result).toEqual(originalCard);
+      spy.mockRestore();
+    });
+
+    it('preserves all ActionCard fields on fallback', async () => {
+      const translateModule = require('../src/translateService');
+      const spy = jest.spyOn(translateModule, 'translateWithCache').mockRejectedValueOnce(new Error('failure'));
+
+      const result = await translateModule.translateCard(mockActionCard, 'ta', mockTranslateClient, mockDb);
+      
+      expect(result.voterState).toBe(mockActionCard.voterState);
+      expect(result.urgencyDays).toBe(mockActionCard.urgencyDays);
+      spy.mockRestore();
+    });
+
+    it('handles non-Error objects in catch block', async () => {
+      const translateModule = require('../src/translateService');
+      const spy = jest.spyOn(translateModule, 'translateWithCache').mockRejectedValueOnce('String Error');
+
+      const result = await translateModule.translateCard(mockActionCard, 'hi', mockTranslateClient, mockDb);
+      expect(result).toEqual(mockActionCard);
+      spy.mockRestore();
     });
   });
 });

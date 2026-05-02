@@ -18,7 +18,6 @@ ensureAdminInitialized();
 
 const PROJECT_ID = process.env.VERTEX_PROJECT_ID ?? '';
 const LOCATION = process.env.VERTEX_LOCATION ?? 'asia-south1';
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173';
 
 /**
  * Validates the incoming request body for the UserContext structure.
@@ -55,11 +54,11 @@ function validateInput(
 
   return {
     valid: true,
-    user: { 
-      state, 
-      age, 
-      isRegistered, 
-      preferredLanguage: preferredLanguage as SupportedLanguage 
+    user: {
+      state,
+      age,
+      isRegistered,
+      preferredLanguage: preferredLanguage as SupportedLanguage
     },
   };
 }
@@ -75,16 +74,16 @@ async function generateExplanation(
 ): Promise<string> {
   try {
     const languageName = LANGUAGE_NAMES[language as SupportedLanguage] ?? 'English';
-    
+
     const apiKey = process.env.GEMINI_API_KEY;
     // Use Vertex AI (Enterprise) if no API key is present, otherwise use AI Studio (API Key)
-    const ai = apiKey 
+    const ai = apiKey
       ? new GoogleGenAI({ apiKey })
-      : new GoogleGenAI({ 
-          enterprise: true,
-          project: projectId,
-          location: _location,
-        });
+      : new GoogleGenAI({
+        enterprise: true,
+        project: projectId,
+        location: _location,
+      });
 
 
     const systemPrompt = `# ROLE
@@ -112,14 +111,14 @@ async function generateExplanation(
 
     const configService = ConfigService.getInstance();
     const modelName = await configService.getConfig('GEMINI_MODEL', process.env.GEMINI_MODEL ?? 'gemini-2.5-flash');
-    
+
     logger.info('Using Gemini model', { model: modelName });
 
     const response = await ai.models.generateContent({
       model: modelName,
       contents: [{ role: 'user', parts: [{ text: 'Explain my voter status and what I should do.' }] }],
       config: {
-        systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] } as unknown as any,
+        systemInstruction: systemPrompt,
         maxOutputTokens: 1024,
         temperature: 0.1,
         topP: 0.8,
@@ -146,8 +145,8 @@ async function generateExplanation(
 }
 
 export const resolveState = onRequest(
-  { 
-    cors: false, 
+  {
+    cors: false,
     region: 'asia-south1',
     secrets: ['GEMINI_MODEL']
   },
