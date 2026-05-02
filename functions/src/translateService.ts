@@ -17,7 +17,7 @@ export async function translateText(
   client: TranslationServiceClient,
 ): Promise<string> {
   // Aggressively strip any and all existing prefixes (e.g. "[HI] [HI] ")
-  const cleanText = text.replace(/^(\[[A-Z]{2}\]\s*)+/, '');
+  const cleanText = text.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
 
   if (targetLanguage === 'en') {
     return cleanText;
@@ -35,7 +35,7 @@ export async function translateText(
     });
 
     const translated = response.translations?.[0]?.translatedText;
-    return translated ? `[${targetLanguage.toUpperCase()}] ${translated}` : originalText;
+    return translated || originalText;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error('Translation API failed', { targetLanguage, error: message });

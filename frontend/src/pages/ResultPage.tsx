@@ -71,15 +71,18 @@ export function ResultPage() {
           api.translateCard(originalData.actionCard, language),
           api.translateText(originalData.aiExplanation, language),
         ]);
+
         setApiResponse((prev) =>
-          prev ? {
-            ...prev,
-            actionCard: translatedCard,
-            aiExplanation: translatedExplanation
-          } : null
+          prev
+            ? {
+                ...prev,
+                actionCard: translatedCard,
+                aiExplanation: translatedExplanation,
+              }
+            : null
         );
       } catch {
-        // Fallback: stay on current content
+        // Silently keep current content on failure
       } finally {
         setIsTranslating(false);
       }

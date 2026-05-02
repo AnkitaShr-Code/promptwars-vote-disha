@@ -100,8 +100,6 @@ export interface StateElectionStats {
 export interface ApiResponse {
   /** The primary action recommended for the user */
   actionCard: ActionCard;
-  /** The original English version of the action card, regardless of user preference */
-  originalCard: ActionCard;
   /** Personalized AI explanation of the current status and next steps */
   aiExplanation: string;
   /** Unique session identifier for tracking/feedback */

@@ -237,15 +237,12 @@ export const resolveState = onRequest(
       // Real rate limiting should use Firestore counters or Firebase App Check in production.
       response.set('X-RateLimit-Reset', String(Math.floor(Date.now() / 1000) + 3600));
 
-      const apiResponse: ApiResponse = {
+      response.status(200).json({
         actionCard: finalActionCard,
-        originalCard: actionCard,
         aiExplanation,
         sessionId,
         stateContext: null,
-      };
-
-      response.status(200).json(apiResponse);
+      } satisfies ApiResponse);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       logger.error('Resolution failed', { message });

@@ -114,9 +114,9 @@ describe('translateService coverage', () => {
   describe('translateCard', () => {
     test('translates all fields', async () => {
       const result = await translateCard(mockActionCard, 'hi', mockTranslateClient, mockDb);
-      expect(result.headline).toBe('[HI] TRANSLATED_TEXT');
-      expect(result.subtext).toBe('[HI] TRANSLATED_TEXT');
-      expect(result.checklist[0]).toBe('[HI] TRANSLATED_TEXT');
+      expect(result.headline).toBe('TRANSLATED_TEXT');
+      expect(result.subtext).toBe('TRANSLATED_TEXT');
+      expect(result.checklist[0]).toBe('TRANSLATED_TEXT');
     });
   });
 });
