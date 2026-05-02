@@ -10,7 +10,7 @@ export function hashString(text: string): string {
   return createHash('sha256').update(text).digest('hex').slice(0, 16);
 }
 
-async function translateText(
+export async function translateText(
   text: string,
   targetLanguage: string,
   originalText: string,
@@ -35,7 +35,7 @@ async function translateText(
     });
 
     const translated = response.translations?.[0]?.translatedText;
-    return translated || originalText;
+    return translated ? `[${targetLanguage.toUpperCase()}] ${translated}` : originalText;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error('Translation API failed', { targetLanguage, error: message });
@@ -74,7 +74,7 @@ export async function setCachedTranslation(
   }
 }
 
-async function translateWithCache(
+export async function translateWithCache(
   text: string,
   targetLanguage: string,
   client: TranslationServiceClient,

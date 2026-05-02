@@ -30,7 +30,10 @@ vi.mock('react-router-dom', async () => {
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(
     <LanguageProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}>
         {ui}
       </BrowserRouter>
     </LanguageProvider>

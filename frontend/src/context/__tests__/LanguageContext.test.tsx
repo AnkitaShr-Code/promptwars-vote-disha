@@ -5,12 +5,14 @@ import { useLanguage, LanguageProvider } from '../LanguageContext';
 
 describe('useLanguage', () => {
   it('throws when used outside LanguageProvider', () => {
-    // Suppress console.error for this test as the error is expected
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Suppress console.error because React logs errors thrown during render
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    
     expect(() => renderHook(() => useLanguage())).toThrow(
       'useLanguage must be used within a LanguageProvider'
     );
-    spy.mockRestore();
+    
+    consoleSpy.mockRestore();
   });
 
   it('provides language value inside LanguageProvider', () => {

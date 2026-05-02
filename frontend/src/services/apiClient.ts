@@ -12,6 +12,7 @@ export class VoteDishaError extends Error {
   }
 }
 
+
 /**
  * Generic fetch wrapper with timeout and standard error handling.
  */
@@ -73,5 +74,39 @@ export const api = {
       body: JSON.stringify({ actionCard, targetLanguage }),
     });
     return response.actionCard;
+  },
+
+  /**
+   * Translates a plain text string by routing it through the translate
+   * Cloud Function. Reuses the ActionCard structure by placing the text
+   * in the headline field and extracting it from the response.
+   *
+   * @param text - The plain English text to translate
+   * @param targetLanguage - Target language code (e.g. 'hi', 'mr', 'ta')
+   * @returns Translated string, or original text on failure
+   */
+  async translateText(text: string, targetLanguage: string): Promise<string> {
+    if (targetLanguage === 'en') return text;
+
+    try {
+      const response = await request<{ actionCard: ActionCard }>('translate', {
+        method: 'POST',
+        body: JSON.stringify({
+          actionCard: {
+            voterState: 'POST_ELECTION',
+            headline: text,
+            subtext: '',
+            urgencyDays: 0,
+            checklist: [],
+            formUrl: null,
+            mapEmbedUrl: null,
+          },
+          targetLanguage,
+        }),
+      });
+      return response.actionCard?.headline ?? text;
+    } catch {
+      return text; // fallback to English on error
+    }
   },
 };

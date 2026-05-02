@@ -1,4 +1,4 @@
-import { hashString, getCachedTranslation, setCachedTranslation } from '../../functions/src/translateService';
+import { hashString, getCachedTranslation, setCachedTranslation, translateText } from '../../functions/src/translateService';
 import * as logger from 'firebase-functions/logger';
 
 jest.mock('firebase-functions/logger');
@@ -17,6 +17,38 @@ describe('translateService coverage', () => {
 
     test('returns different output for different inputs', () => {
       expect(hashString('a')).not.toBe(hashString('b'));
+    });
+  });
+
+  describe('translateText', () => {
+    const mockClient = {
+      translateText: jest.fn(),
+    } as any;
+
+    test('returns clean text directly if language is en', async () => {
+      const result = await translateText('[HI] Hello', 'en', 'Hello', mockClient);
+      expect(result).toBe('Hello');
+    });
+
+    test('returns original text if clean text is empty', async () => {
+      const result = await translateText('[HI] ', 'hi', 'Original', mockClient);
+      expect(result).toBe('Original');
+    });
+
+    test('returns original text if translation result is empty', async () => {
+      mockClient.translateText.mockResolvedValueOnce([{
+        translations: []
+      }]);
+      const result = await translateText('Hello', 'hi', 'Original', mockClient);
+      expect(result).toBe('Original');
+    });
+
+    test('returns formatted translation with prefix', async () => {
+      mockClient.translateText.mockResolvedValueOnce([{
+        translations: [{ translatedText: 'Namaste' }]
+      }]);
+      const result = await translateText('Hello', 'hi', 'Original', mockClient);
+      expect(result).toBe('[HI] Namaste');
     });
   });
 

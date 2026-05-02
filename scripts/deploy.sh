@@ -137,23 +137,44 @@ for KEY in "${KEYS[@]}"; do
 done
 echo -e "${GREEN}✓ Secrets synchronized.${NC}"
 
-# --- SECTION 6: Deploy Firebase Functions ---
+# --- SECTION 6: Deploy Backend Functions (Cloud Run v2) ---
 echo -e "\n${BLUE}[6/10] Deploying Functions to Cloud Run v2...${NC}"
 firebase deploy --only functions
-echo -e "${GREEN}✓ Functions deployed successfully.${NC}"
+echo -e "${GREEN}✓ Functions deployed successfully to Cloud Run.${NC}"
 
-# --- SECTION 7: Deploy Firebase Hosting ---
-echo -e "\n${BLUE}[7/10] Deploying static assets to Firebase Hosting...${NC}"
+# --- SECTION 7: Deploy Frontend to Cloud Run ---
+echo -e "\n${BLUE}[7/10] Deploying Frontend to Cloud Run...${NC}"
+
+# We use Cloud Build to build the Docker image and push to GCR
+echo -e "Building frontend container image..."
+gcloud builds submit --config cloudbuild.yaml \
+    --substitutions=_VITE_API_BASE_URL="${FUNCTION_URL}" \
+    .
+
+# Deploy the image to Cloud Run
+echo -e "Deploying to Cloud Run service: votedisha-frontend"
+gcloud run deploy votedisha-frontend \
+    --image gcr.io/${PROJECT_ID}/votedisha-frontend \
+    --platform managed \
+    --region asia-south1 \
+    --allow-unauthenticated
+
+# Get the frontend URL
+FRONTEND_CR_URL=$(gcloud run services describe votedisha-frontend --platform managed --region asia-south1 --format='value(status.url)')
+echo -e "${GREEN}✓ Frontend deployed to Cloud Run: ${FRONTEND_CR_URL}${NC}"
+
+# --- SECTION 8: Deploy Firebase Hosting (Cloud Run Hosting) ---
+echo -e "\n${BLUE}[8/10] Deploying Hosting configuration (Rewriting to Cloud Run)...${NC}"
 firebase deploy --only hosting
-echo -e "${GREEN}✓ Hosting deployed successfully.${NC}"
+echo -e "${GREEN}✓ Hosting configured to serve Cloud Run.${NC}"
 
-# --- SECTION 8: Deploy Firestore rules and indexes ---
-echo -e "\n${BLUE}[8/10] Deploying Firestore configuration...${NC}"
+# --- SECTION 9: Deploy Firestore rules and indexes ---
+echo -e "\n${BLUE}[9/10] Deploying Firestore configuration...${NC}"
 firebase deploy --only firestore
 echo -e "${GREEN}✓ Firestore configuration deployed.${NC}"
 
-# --- SECTION 9: Smoke test ---
-echo -e "\n${BLUE}[9/10] Running production smoke test...${NC}"
+# --- SECTION 10: Smoke test ---
+echo -e "\n${BLUE}[10/10] Running production smoke test...${NC}"
 
 # Attempt to get the actual Cloud Run URL for the function (v2)
 echo "Fetching function URL..."
@@ -183,11 +204,13 @@ fi
 # --- SECTION 10: Print summary ---
 echo -e "\n${GREEN}==============================================================================${NC}"
 echo -e "${GREEN}VOTEDISHA DEPLOYMENT COMPLETE!${NC}"
-echo -e "✓ Functions deployed"
-echo -e "✓ Hosting deployed"
+echo -e "✓ Functions deployed (Cloud Run v2)"
+echo -e "✓ Frontend deployed (Cloud Run)"
+echo -e "✓ Hosting configured (Cloud Run Hosting)"
 echo -e "✓ Firestore rules deployed"
 echo -e "\nResources:"
-echo -e "- Frontend URL: https://${PROJECT_ID}.web.app"
-echo -e "- Functions URL: https://asia-south1-${PROJECT_ID}.cloudfunctions.net"
+echo -e "- Frontend URL (Cloud Run): ${FRONTEND_CR_URL}"
+echo -e "- Frontend URL (Static): https://${PROJECT_ID}.web.app"
+echo -e "- Functions URL: ${FUNCTION_URL}"
 echo -e "- Firebase Console: https://console.firebase.google.com/project/${PROJECT_ID}"
 echo -e "${GREEN}==============================================================================${NC}"

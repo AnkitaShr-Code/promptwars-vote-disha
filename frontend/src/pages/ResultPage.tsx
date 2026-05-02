@@ -57,7 +57,7 @@ export function ResultPage() {
       // 1. If switching to English, restore from original server-provided source
       if (language === 'en') {
         setApiResponse((prev) =>
-          prev ? { ...prev, actionCard: originalData.actionCard } : null
+          prev ? { ...prev, actionCard: originalData.actionCard, aiExplanation: originalData.aiExplanation } : null
         );
         return;
       }
@@ -67,11 +67,18 @@ export function ResultPage() {
 
       setIsTranslating(true);
       try {
-        const translatedCard = await api.translateCard(originalData.actionCard, language);
+        const [translatedCard, translatedExplanation] = await Promise.all([
+          api.translateCard(originalData.actionCard, language),
+          api.translateText(originalData.aiExplanation, language),
+        ]);
         setApiResponse((prev) =>
-          prev ? { ...prev, actionCard: translatedCard } : null
+          prev ? {
+            ...prev,
+            actionCard: translatedCard,
+            aiExplanation: translatedExplanation
+          } : null
         );
-      } catch (err) {
+      } catch {
         // Fallback: stay on current content
       } finally {
         setIsTranslating(false);
