@@ -81,14 +81,14 @@ export async function translateWithCache(
   db: Firestore,
 ): Promise<string> {
   if (targetLanguage === 'en') {
-    return text.replace(/^(\[[A-Z]{2}\]\s*)+/, '');
+    return text.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
   }
 
-  const cleanText = text.replace(/^(\[[A-Z]{2}\]\s*)+/, '');
+  const cleanText = text.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
   const cacheKey = hashString(`${cleanText}:${targetLanguage}`);
   const cached = await getCachedTranslation(cacheKey, db);
   if (cached) {
-    return cached;
+    return cached.replace(/^(\[[A-Z]{2}\]\s*)+/, '').trim();
   }
 
   const translated = await translateText(text, targetLanguage, text, client);
