@@ -40,12 +40,13 @@ async function request<T>(endpoint: string, options: RequestInit): Promise<T> {
     }
 
     return await response.json();
-  } catch (err: any) {
-    if (err.name === 'AbortError') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
       throw new VoteDishaError('Request timed out', 'TIMEOUT');
     }
     if (err instanceof VoteDishaError) throw err;
-    throw new VoteDishaError(err.message || 'Network failure', 'NETWORK_ERROR');
+    const message = err instanceof Error ? err.message : 'Network failure';
+    throw new VoteDishaError(message, 'NETWORK_ERROR');
   }
 }
 

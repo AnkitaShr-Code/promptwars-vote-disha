@@ -12,6 +12,26 @@ export function ResultPage() {
   const { language } = useLanguage();
   const { t } = useTranslation(language);
 
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // ADD this useEffect after the existing ones:
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  // UPDATE the h1:
+  <h1
+    ref={headingRef}
+    tabIndex={-1}
+    style={{
+      fontSize: '2.25rem',
+      marginBottom: '0.5rem',
+      outline: 'none'  // hide focus ring for programmatic focus
+    }}
+  >
+    {t('voter_guide_title')}
+  </h1>
+
   // We use a ref to store the "raw" response from the server to prevent
   // losing the English source of truth during re-renders or language toggles.
   const sourceResponse = useRef<ApiResponse | null>(
@@ -37,22 +57,21 @@ export function ResultPage() {
       // 1. If switching to English, restore from original server-provided source
       if (language === 'en') {
         setApiResponse((prev) =>
-          prev ? { ...prev, actionCard: originalData.originalCard || originalData.actionCard } : null
+          prev ? { ...prev, actionCard: originalData.actionCard } : null
         );
         return;
       }
 
       // 2. Optimization: If the current card already matches the language (demo mode prefix check)
       // we could skip, but for now we re-fetch to ensure consistency.
-      
+
       setIsTranslating(true);
       try {
-        const translatedCard = await api.translateCard(originalData.originalCard || originalData.actionCard, language);
+        const translatedCard = await api.translateCard(originalData.actionCard, language);
         setApiResponse((prev) =>
           prev ? { ...prev, actionCard: translatedCard } : null
         );
       } catch (err) {
-        console.error('Translation failed', err);
         // Fallback: stay on current content
       } finally {
         setIsTranslating(false);
@@ -66,6 +85,8 @@ export function ResultPage() {
 
   return (
     <div
+      id="main-content"
+      role="main"
       className="animate-fade-in"
       style={{
         maxWidth: '640px',
@@ -125,6 +146,7 @@ export function ResultPage() {
       <div style={{ textAlign: 'center', marginTop: '3rem', paddingBottom: '4rem' }}>
         <button
           onClick={() => navigate('/')}
+          aria-label="Go back to start"
           style={{
             background: 'white',
             border: '1.5px solid var(--color-border)',

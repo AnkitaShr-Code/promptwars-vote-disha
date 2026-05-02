@@ -1,6 +1,8 @@
 import { translateCard } from '../src/translateService';
 import { ActionCard, VoterState } from '../../shared/types';
 
+jest.mock('firebase-functions/logger');
+
 describe('translateService — translateCard', () => {
   const mockActionCard: ActionCard = {
     voterState: VoterState.REGISTRATION_GAP,

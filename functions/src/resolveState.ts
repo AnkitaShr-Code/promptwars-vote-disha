@@ -24,13 +24,14 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173';
  * Validates the incoming request body for the UserContext structure.
  */
 function validateInput(
-  body: any,
+  body: unknown,
 ): { valid: true; user: UserContext } | { valid: false; error: string; code: string } {
-  if (!body || typeof body !== 'object') {
+  if (typeof body !== 'object' || body === null) {
     return { valid: false, error: 'Invalid request body', code: 'INVALID_BODY' };
   }
 
-  const { state, age, isRegistered, preferredLanguage } = body;
+  const b = body as Record<string, unknown>;
+  const { state, age, isRegistered, preferredLanguage } = b;
 
   // 1. state
   if (typeof state !== 'string' || !ELECTION_DB[state]) {
@@ -48,13 +49,18 @@ function validateInput(
   }
 
   // 4. preferredLanguage
-  if (typeof preferredLanguage !== 'string' || !SUPPORTED_LANGUAGES.includes(preferredLanguage as any)) {
+  if (typeof preferredLanguage !== 'string' || !(SUPPORTED_LANGUAGES as readonly string[]).includes(preferredLanguage)) {
     return { valid: false, error: 'Unsupported language', code: 'INVALID_LANGUAGE' };
   }
 
   return {
     valid: true,
-    user: { state, age, isRegistered, preferredLanguage },
+    user: { 
+      state, 
+      age, 
+      isRegistered, 
+      preferredLanguage: preferredLanguage as SupportedLanguage 
+    },
   };
 }
 
@@ -113,7 +119,7 @@ async function generateExplanation(
       model: modelName,
       contents: [{ role: 'user', parts: [{ text: 'Explain my voter status and what I should do.' }] }],
       config: {
-        systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] } as any,
+        systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] } as unknown as any,
         maxOutputTokens: 1024,
         temperature: 0.1,
         topP: 0.8,
@@ -240,10 +246,11 @@ export const resolveState = onRequest(
       };
 
       response.status(200).json(apiResponse);
-    } catch (err: any) {
-      logger.error('Resolution failed', { message: err.message });
-      if (err.message?.includes('STATE_NOT_FOUND')) {
-        const error: ApiError = { error: err.message, code: 'STATE_NOT_FOUND' };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error('Resolution failed', { message });
+      if (message.includes('STATE_NOT_FOUND')) {
+        const error: ApiError = { error: message, code: 'STATE_NOT_FOUND' };
         response.status(404).json(error);
         return;
       }

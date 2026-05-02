@@ -146,7 +146,9 @@ export function StateCard({ actionCard, aiExplanation, sessionId }: StateCardPro
     if (navigator.share) {
       try {
         await navigator.share({ title: 'VoteDisha', text: shareText });
-      } catch (e) { }
+      } catch (e: unknown) {
+        void e;
+      }
     } else {
       await navigator.clipboard.writeText(shareText);
       setShowCopied(true);
@@ -358,6 +360,7 @@ export function StateCard({ actionCard, aiExplanation, sessionId }: StateCardPro
           {actionCard.mapEmbedUrl && (
             <a
               href={actionCard.mapEmbedUrl}
+              aria-label="Find your polling booth (opens in new tab)"
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -382,6 +385,7 @@ export function StateCard({ actionCard, aiExplanation, sessionId }: StateCardPro
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
             <button
               onClick={handleShare}
+              aria-label="Share your voter status"
               style={{
                 flex: 1,
                 padding: '1rem',

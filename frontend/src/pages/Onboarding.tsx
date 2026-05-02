@@ -21,11 +21,11 @@ export function Onboarding() {
   const MS_IN_90_DAYS = 90 * 24 * 60 * 60 * 1000;
 
   const handleNext = () => {
-    if (step < 3) setStep((s) => (s + 1) as any);
+    if (step < 3) setStep((s) => (s + 1) as 1 | 2 | 3);
   };
 
   const handleBack = () => {
-    if (step > 1) setStep((s) => (s - 1) as any);
+    if (step > 1) setStep((s) => (s - 1) as 1 | 2 | 3);
   };
 
   const handleSubmit = async () => {
@@ -42,7 +42,7 @@ export function Onboarding() {
         preferredLanguage: language,
       });
       navigate('/result', { state: { apiResponse: response } });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof VoteDishaError) {
         setError(`${err.message} (${err.code})`);
       } else {

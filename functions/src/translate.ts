@@ -27,7 +27,6 @@ export const translate = onRequest(
         });
         return;
       }
-
       const { actionCard, targetLanguage } = request.body;
       
       // Basic validation for actionCard structure
@@ -43,7 +42,7 @@ export const translate = onRequest(
 
       if (
         !targetLanguage ||
-        !SUPPORTED_LANGUAGES.includes(targetLanguage)
+        !(SUPPORTED_LANGUAGES as readonly string[]).includes(targetLanguage)
       ) {
         response.status(400).json({ error: 'Unsupported or missing target language', code: 'INVALID_LANGUAGE' });
         return;
@@ -56,8 +55,9 @@ export const translate = onRequest(
 
       const translated = await translateCard(actionCard, targetLanguage, client, db);
       response.status(200).json({ actionCard: translated });
-    } catch (err) {
-      logger.error('Translation handler failed', err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error('Translation handler failed', { error: message });
       response.status(500).json({ error: 'Translation failed', code: 'TRANSLATION_ERROR' });
     }
   },

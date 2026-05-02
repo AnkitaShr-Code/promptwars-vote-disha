@@ -6,7 +6,7 @@ import { createHash } from 'crypto';
 
 const PROJECT_ID = process.env.VERTEX_PROJECT_ID ?? '';
 
-function hashString(text: string): string {
+export function hashString(text: string): string {
   return createHash('sha256').update(text).digest('hex').slice(0, 16);
 }
 
@@ -36,13 +36,14 @@ async function translateText(
 
     const translated = response.translations?.[0]?.translatedText;
     return translated || originalText;
-  } catch (err) {
-    logger.error('Translation API failed', { targetLanguage });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('Translation API failed', { targetLanguage, error: message });
     return originalText;
   }
 }
 
-async function getCachedTranslation(
+export async function getCachedTranslation(
   cacheKey: string,
   db: Firestore,
 ): Promise<string | null> {
@@ -52,12 +53,12 @@ async function getCachedTranslation(
       return doc.data()?.text as string;
     }
     return null;
-  } catch (err) {
+  } catch (err: unknown) {
     return null;
   }
 }
 
-async function setCachedTranslation(
+export async function setCachedTranslation(
   cacheKey: string,
   text: string,
   db: Firestore,
@@ -67,8 +68,9 @@ async function setCachedTranslation(
       text,
       createdAt: new Date().toISOString(),
     });
-  } catch (err) {
-    logger.error('Failed to set cache', { cacheKey, error: err });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('Failed to set cache', { cacheKey, error: message });
   }
 }
 

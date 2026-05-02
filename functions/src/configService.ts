@@ -6,7 +6,7 @@ import * as logger from 'firebase-functions/logger';
  */
 export class ConfigService {
   private static instance: ConfigService;
-  private cache: Record<string, any> = {};
+  private cache: Record<string, string> = {};
   private lastFetch: number = 0;
   private readonly TTL = 60 * 1000; // 1 minute cache
 
@@ -47,8 +47,9 @@ export class ConfigService {
           return data[key];
         }
       }
-    } catch (err) {
-      logger.error(`Failed to fetch config from Firestore: ${key}`, err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error(`Failed to fetch config from Firestore: ${key}`, { error: message });
     }
 
     // Fallback to environment variable or provided default
